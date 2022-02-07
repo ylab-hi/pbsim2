@@ -1330,6 +1330,10 @@ int simulate_by_sampling() {
         freq_accuracy[value] ++;
 
         sprintf(id, "%s%ld_%ld", sim.id_prefix, ref.num, sim.res_num);
+
+//        my change
+        if (mut.seq_strand == '-')
+          revcomp(mut.new_seq);
         fprintf(fp_fq, "@%s\n%s\n+%s\n%s\n", id, mut.new_seq, id, mut.new_qc);
 
         digit_num1[0] = 3;
