@@ -46,18 +46,18 @@ struct sim_t {
   int process;
   double depth;
   double accuracy_mean, accuracy_max, accuracy_min;
-  long len_min, len_max; 
-  double len_mean, len_sd; 
+  long len_min, len_max;
+  double len_mean, len_sd;
   long long len_quota;
   long sub_ratio, ins_ratio, del_ratio;
   double sub_rate, ins_rate, del_rate;
   int set_flg[20];
   long res_num;
-  long long res_len_total; 
+  long long res_len_total;
   double res_depth;
   double res_accuracy_mean, res_accuracy_sd;
-  long res_len_min, res_len_max; 
-  double res_len_mean, res_len_sd; 
+  long res_len_min, res_len_max;
+  double res_len_mean, res_len_sd;
   long res_sub_num, res_ins_num, res_del_num;
   double res_sub_rate, res_ins_rate, res_del_rate;
   char *prefix, *outfile_ref, *outfile_fq, *outfile_maf;
@@ -397,7 +397,7 @@ int main (int argc, char** argv) {
     }
   }
 
-  // Setting of simulation parameters     
+  // Setting of simulation parameters
   if (set_sim_param() == FAILED) {
     exit(-1);
   }
@@ -859,7 +859,7 @@ int get_fastq_inf() {
               fastq.len_total_filtered += len;
 
               freq_len[len] ++;
-              value = (int)(accuracy * 100000 + 0.5); 
+              value = (int)(accuracy * 100000 + 0.5);
               freq_accuracy[value] ++;
 
               fprintf(fp_filtered, "%s\n", qc_tmp);
@@ -901,7 +901,7 @@ int get_fastq_inf() {
 
     variance = 0.0;
     for (i=0; i<=sim.len_max; i++) {
-      if (freq_len[i] > 0) { 
+      if (freq_len[i] > 0) {
         variance += pow((fastq.len_mean_filtered - i), 2) * freq_len[i];
       }
     }
@@ -909,7 +909,7 @@ int get_fastq_inf() {
 
     variance = 0.0;
     for (i=0; i<=100000; i++) {
-      if (freq_accuracy[i] > 0) { 
+      if (freq_accuracy[i] > 0) {
         variance += pow((fastq.accuracy_mean_filtered - i * 0.00001), 2) * freq_accuracy[i];
       }
     }
@@ -1348,7 +1348,7 @@ int simulate_by_sampling() {
         digit_num2[3] = count_digit(len);
         digit_num[3] = (digit_num1[3] >= digit_num2[3]) ? digit_num1[3] : digit_num2[3];
 
-        fprintf(fp_maf, "a\ns ref"); 
+        fprintf(fp_maf, "a\ns ref");
         while (digit_num1[0] ++ < digit_num[0]) {
           fprintf(fp_maf, " ");
         }
@@ -1364,7 +1364,7 @@ int simulate_by_sampling() {
           fprintf(fp_maf, " ");
         }
         fprintf(fp_maf, " %ld %s\n", ref.len, mut.maf_ref_seq);
-        fprintf(fp_maf, "s %s", id); 
+        fprintf(fp_maf, "s %s", id);
         while (digit_num2[0] ++ < digit_num[0]) {
           fprintf(fp_maf, " ");
         }
@@ -1459,7 +1459,7 @@ int simulate_by_model() {
 
   // length distribution
   variance = pow(sim.len_sd, 2);
-  kappa = pow(sim.len_mean, 2) / variance; 
+  kappa = pow(sim.len_mean, 2) / variance;
   theta = variance / sim.len_mean;
   gamma = tgamma(kappa);
 
@@ -1467,7 +1467,7 @@ int simulate_by_model() {
     prob2len[1] = int(sim.len_mean + 0.5);
     len_rand_value = 1;
   } else {
-    start_wk = 1; 
+    start_wk = 1;
     len_prob_total = 0.0;
     for (i=sim.len_min; i<=sim.len_max; i++) {
       len_prob_total += pow(i, kappa-1) * exp(-1 * i / theta) / pow(theta, kappa) / gamma;
@@ -1505,7 +1505,7 @@ int simulate_by_model() {
   for (i=accuracy_min; i<=accuracy_max; i++) {
     freq_total += exp(0.22 * i);
   }
-  start_wk = 1; 
+  start_wk = 1;
   accuracy_prob_total = 0.0;
   for (i=accuracy_min; i<=accuracy_max; i++) {
     accuracy_prob_total += exp(0.22 * i) / freq_total;
@@ -1534,7 +1534,7 @@ int simulate_by_model() {
   for (i=accuracy_min; i<=accuracy_max; i++) {
 
     if (hmm_model[i].exist_hmm == 1) {
-      start_wk = 1; 
+      start_wk = 1;
       qc_prob_total = 0.0;
 
       for (j=1; j<=STATE_MAX; j++) {
@@ -1559,7 +1559,7 @@ int simulate_by_model() {
       qc_rand_value_init[i] = end_wk;
 
       for (j=1; j<=STATE_MAX; j++) {
-        start_wk = 1; 
+        start_wk = 1;
         qc_prob_total = 0.0;
 
         for (k=0; k<=93; k++) {
@@ -1585,7 +1585,7 @@ int simulate_by_model() {
       }
 
       for (j=1; j<=STATE_MAX; j++) {
-        start_wk = 1; 
+        start_wk = 1;
         qc_prob_total = 0.0;
 
         for (k=1; k<=STATE_MAX; k++) {
@@ -1610,7 +1610,7 @@ int simulate_by_model() {
         qc_rand_value_tran[i][j] = end_wk;
       }
     } else {
-      start_wk = 1; 
+      start_wk = 1;
       qc_prob_total = 0.0;
 
       for (j=0; j<=93; j++) {
@@ -1706,6 +1706,11 @@ int simulate_by_model() {
     freq_accuracy[accuracy] ++;
 
     sprintf(id, "%s%ld_%ld", sim.id_prefix, ref.num, sim.res_num);
+
+//    my change
+    if (mut.seq_strand == '-')
+        revcomp(mut.new_seq);
+
     fprintf(fp_fq, "@%s\n%s\n+%s\n%s\n", id, mut.new_seq, id, mut.new_qc);
 
     digit_num1[0] = 3;
@@ -1843,7 +1848,7 @@ int simulate_by_templ() {
   for (i=accuracy_min; i<=accuracy_max; i++) {
     freq_total += exp(0.22 * i);
   }
-  start_wk = 1; 
+  start_wk = 1;
   accuracy_prob_total = 0.0;
   for (i=accuracy_min; i<=accuracy_max; i++) {
     accuracy_prob_total += exp(0.22 * i) / freq_total;
@@ -1872,7 +1877,7 @@ int simulate_by_templ() {
   for (i=accuracy_min; i<=accuracy_max; i++) {
 
     if (hmm_model[i].exist_hmm == 1) {
-      start_wk = 1; 
+      start_wk = 1;
       qc_prob_total = 0.0;
 
       for (j=1; j<=STATE_MAX; j++) {
@@ -1897,7 +1902,7 @@ int simulate_by_templ() {
       qc_rand_value_init[i] = end_wk;
 
       for (j=1; j<=STATE_MAX; j++) {
-        start_wk = 1; 
+        start_wk = 1;
         qc_prob_total = 0.0;
 
         for (k=0; k<=93; k++) {
@@ -1923,7 +1928,7 @@ int simulate_by_templ() {
       }
 
       for (j=1; j<=STATE_MAX; j++) {
-        start_wk = 1; 
+        start_wk = 1;
         qc_prob_total = 0.0;
 
         for (k=1; k<=STATE_MAX; k++) {
@@ -1948,7 +1953,7 @@ int simulate_by_templ() {
         qc_rand_value_tran[i][j] = end_wk;
       }
     } else {
-      start_wk = 1; 
+      start_wk = 1;
       qc_prob_total = 0.0;
 
       for (j=0; j<=93; j++) {
@@ -2045,6 +2050,10 @@ int simulate_by_templ() {
       freq_accuracy[accuracy] ++;
 
       sprintf(id, "%s_%ld", sim.id_prefix, sim.res_num);
+
+//      my change
+      if (mut.seq_strand == '-')
+          revcomp(mut.new_seq);
       fprintf(fp_fq, "@%s\n%s\n+%s\n%s\n", id, mut.new_seq, id, mut.new_qc);
 
       digit_num1[0] = 3;
@@ -2729,7 +2738,7 @@ int count_digit(long num) {
   }
 
   return digit;
-}  
+}
 
 //////////////////////////////////////////////////////
 // Function: revcomp - convert to reverse complement//
