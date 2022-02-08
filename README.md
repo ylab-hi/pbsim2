@@ -1,3 +1,5 @@
+__Notice__: this modified fork works for PacBio and Nanopore RNA reads only.
+
 1. About PBSIM
 
 We have developed a long reads simulater (called PBSIM) in which
