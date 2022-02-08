@@ -1,4 +1,4 @@
-__Notice__: this modified fork works for PacBio and Nanopore RNA reads only.
+__Notice__: **this modified fork works for PacBio and Nanopore RNA reads only.**
 
 1. About PBSIM
 
