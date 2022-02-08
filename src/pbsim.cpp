@@ -166,6 +166,7 @@ void print_templ_stats();
 void print_simulation_stats();
 void print_help();
 void revcomp(char* str);
+void rev(char* str);
 long get_time_cpu();
 long get_time();
 
@@ -1332,8 +1333,10 @@ int simulate_by_sampling() {
         sprintf(id, "%s%ld_%ld", sim.id_prefix, ref.num, sim.res_num);
 
 //        my change
-        if (mut.seq_strand == '-')
+        if (mut.seq_strand == '-'){
           revcomp(mut.new_seq);
+          rev(mut.new_qc);
+        }
         fprintf(fp_fq, "@%s\n%s\n+%s\n%s\n", id, mut.new_seq, id, mut.new_qc);
 
         digit_num1[0] = 3;
@@ -1712,9 +1715,10 @@ int simulate_by_model() {
     sprintf(id, "%s%ld_%ld", sim.id_prefix, ref.num, sim.res_num);
 
 //    my change
-    if (mut.seq_strand == '-')
+    if (mut.seq_strand == '-'){
         revcomp(mut.new_seq);
-
+        rev(mut.new_qc);
+    }
     fprintf(fp_fq, "@%s\n%s\n+%s\n%s\n", id, mut.new_seq, id, mut.new_qc);
 
     digit_num1[0] = 3;
@@ -2056,8 +2060,10 @@ int simulate_by_templ() {
       sprintf(id, "%s_%ld", sim.id_prefix, sim.res_num);
 
 //      my change
-      if (mut.seq_strand == '-')
+      if (mut.seq_strand == '-'){
           revcomp(mut.new_seq);
+          rev(mut.new_qc);
+      }
       fprintf(fp_fq, "@%s\n%s\n+%s\n%s\n", id, mut.new_seq, id, mut.new_qc);
 
       digit_num1[0] = 3;
@@ -2771,4 +2777,19 @@ void revcomp(char* str) {
       str[i] = 'G';
     }
   }
-}  
+}
+
+
+void rev(char* str) {
+  int i, len;
+  char c;
+
+  len = strlen(str);
+
+  for(i=0; i<len/2; i++) {
+    c = str[i];
+    str[i] = str[len-i-1];
+    str[len-i-1] = c;
+  }
+}
+
