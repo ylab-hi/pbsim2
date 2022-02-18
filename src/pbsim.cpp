@@ -499,26 +499,7 @@ int main(int argc, char **argv) {
       exit(-1);
     }
   }
-  if (0) {
-    for (i = 0; i <= ACCURACY_MAX; i++) {
-      for (j = 1; j <= STATE_MAX; j++) {
-        for (k = 0; k <= 93; k++) {
-          fprintf(stderr, "##### %ld : %ld : %ld : %f\n", i, j, k,
-                  hmm_model[i].ep[j][k]);
-        }
-      }
-    }
-  }
-  if (0) {
-    for (i = 0; i <= ACCURACY_MAX; i++) {
-      for (j = 1; j <= STATE_MAX; j++) {
-        for (k = 1; k <= STATE_MAX; k++) {
-          fprintf(stderr, "##### %ld : %ld : %ld : %f\n", i, j, k,
-                  hmm_model[i].tp[j][k]);
-        }
-      }
-    }
-  }
+
 
   // Set mutation parameters and varianeces
   if (set_mut() == FAILED) {
@@ -579,29 +560,19 @@ int main(int argc, char **argv) {
         return FAILED;
       }
 
-      sprintf(sim.outfile_maf, "%s_%04ld.maf", sim.prefix, ref.num);
-      if ((fp_maf = fopen(sim.outfile_maf, "w")) == NULL) {
-        fprintf(stderr, "ERROR: Cannot open output file: %s\n",
-                sim.outfile_maf);
-        return FAILED;
-      }
-
       sim.len_quota = (long long)(sim.depth * ref.len);
 
       if (sim.process == PROCESS_MODEL) {
         if (simulate_by_model() == FAILED) {
           exit(-1);
         }
-      } else {
-        if (simulate_by_sampling() == FAILED) {
-          exit(-1);
-        }
+      } else if (simulate_by_sampling() == FAILED) {
+        exit(-1);
       }
 
       print_simulation_stats();
 
       fclose(fp_fq);
-      fclose(fp_maf);
     }
   }
 
@@ -1295,14 +1266,12 @@ int simulate_by_sampling() {
   double accuracy, accuracy_total = 0.0;
   double prob, variance;
   char id[128];
-  int digit_num1[4], digit_num2[4], digit_num[4];
 
-  for (i = 0; i <= sim.len_max; i++) {
+  for (i = 0; i <= sim.len_max; i++)
     freq_len[i] = 0;
-  }
-  for (i = 0; i <= 100000; i++) {
+
+  for (i = 0; i <= 100000; i++)
     freq_accuracy[i] = 0;
-  }
 
   for (i = 0; i <= 93; i++) {
     mut.err_thre[i] = int(qc[i].prob * 1000000 + 0.5);
@@ -1340,7 +1309,7 @@ int simulate_by_sampling() {
       else
         num = sampling_num;
 
-      sampling_value++;
+      ++sampling_value;
 
       for (i = 0; i < num; i++) {
         if (len_total >= sim.len_quota)
@@ -1390,28 +1359,7 @@ int simulate_by_sampling() {
           revcomp(mut.new_seq);
           rev(mut.new_qc);
         }
-
         fprintf(fp_fq, "@%s\n%s\n+%s\n%s\n", id, mut.new_seq, id, mut.new_qc);
-
-        digit_num1[0] = 3;
-        digit_num2[0] = 1 + count_digit(sim.res_num);
-        digit_num[0] =
-            (digit_num1[0] >= digit_num2[0]) ? digit_num1[0] : digit_num2[0];
-
-        digit_num1[1] = count_digit((mut.seq_left - 1));
-        digit_num2[1] = 1;
-        digit_num[1] =
-            (digit_num1[1] >= digit_num2[1]) ? digit_num1[1] : digit_num2[1];
-
-        digit_num1[2] = count_digit((mut.seq_right - mut.seq_left + 1));
-        digit_num2[2] = count_digit(len);
-        digit_num[2] =
-            (digit_num1[2] >= digit_num2[2]) ? digit_num1[2] : digit_num2[2];
-
-        digit_num1[3] = count_digit(ref.len);
-        digit_num2[3] = count_digit(len);
-        digit_num[3] =
-            (digit_num1[3] >= digit_num2[3]) ? digit_num1[3] : digit_num2[3];
       }
     }
 
