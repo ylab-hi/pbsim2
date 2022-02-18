@@ -1340,41 +1340,39 @@ int my_simulate_by_sampling(sim_t &simp, ref_t &refp, mut_t &mutp, qc_t *qcp,
 
   // Make simulation data
   while (len_total < simp.len_quota) {
-    rewind(filter_fp_file);
+    rewind(filter_fp_file); // TODO: CHANGE
 
     sampling_value = rand() % fastqp.num_filtered;
     while (fgets(mutp.qc, fastqp.len_max_filtered + 2, filter_fp_file) !=
            NULL) {
 
-      if (len_total >= sim.len_quota) {
+      if (len_total >= simp.len_quota) {
         break;
       }
 
-      trim(mut.qc);
+      trim(mutp.qc);
 
-      if (sampling_value % sampling_interval == 0)
-        num = sampling_num + 1;
-      else
-        num = sampling_num;
+      num = sampling_value % sampling_interval == 0 ? sampling_num + 1
+                                                    : sampling_num;
 
       ++sampling_value;
 
       for (i = 0; i < num; i++) {
-        if (len_total >= sim.len_quota)
+        if (len_total >= simp.len_quota)
           break;
 
-        mut.tmp_len_max = sim.len_quota - len_total;
-        if (mut.tmp_len_max < sim.len_min)
-          mut.tmp_len_max = sim.len_min;
+        mutp.tmp_len_max = simp.len_quota - len_total;
+        if (mutp.tmp_len_max < simp.len_min)
+          mutp.tmp_len_max = simp.len_min;
 
-        len = strlen(mut.qc);
+        len = strlen(mutp.qc);
         prob = 0.0;
 
         for (j = 0; j < len; j++)
-          prob += qc[(int)mut.qc[j] - 33].prob;
+          prob += qcp[(int)mutp.qc[j] - 33].prob;
 
         accuracy = 1.0 - (prob / len);
-        mut.del_thre = int(((1 - accuracy) * sim.del_rate) * 1000000 + 0.5);
+        mutp.del_thre = int(((1 - accuracy) * simp.del_rate) * 1000000 + 0.5);
 
         if (mutate() == FAILED)
           return FAILED;
@@ -1646,6 +1644,167 @@ int set_mut() {
 ////////////////////////////////////
 // Function: mutate - Mutate read //
 ////////////////////////////////////
+
+int my_mutate(mut_t &mut_param, sim_t &sim_param, ref_t &ref_param) {
+
+  char *line;
+  char nt;
+  long num;
+  long i, j;
+  long index;
+  long rand_value;
+  long qc_value;
+  long len;
+  long offset, seq_offset, maf_offset;
+  long del_num_total, pos;
+
+  len = strlen(mut_param.qc);
+  if (mut_param.tmp_len_max < len)
+    len = mut_param.tmp_len_max;
+
+  // Place deletions
+  long del_num[len];
+
+  for (i = 0; i < len; i++)
+    del_num[i] = 0;
+
+  del_num_total = int((float)len * mut_param.del_thre / 1000000 + 0.5);
+  num = 0;
+  while (num < del_num_total) {
+    pos = rand() % (len - 1);
+    rand_value = rand() % 1000000;
+    qc_value = (int)mut_param.qc[pos] - 33;
+    if (rand_value < mut_param.err_thre[qc_value]) {
+      del_num[pos]++;
+      num++;
+    }
+  }
+
+  offset = 0;
+
+  for (i = 0; i < len - 1; i++) {
+    mut_param.tmp_qc[offset++] = mut_param.qc[i];
+    for (j = 0; j < del_num[i]; j++)
+      mut_param.tmp_qc[offset++] = ' ';
+  }
+
+  mut_param.tmp_qc[offset++] = mut_param.qc[len - 1];
+  mut_param.tmp_qc[offset] = '\0';
+  sim_param.res_del_num += del_num_total;
+
+  len = strlen(mut_param.tmp_qc);
+
+  if (len >= ref_param.len) {
+    offset = 0;
+    len = ref_param.len;
+  } else {
+    offset = rand() % (ref_param.len - len + 1);
+  }
+
+  mut_param.seq_left = offset + 1;
+  mut_param.seq_right = offset + len;
+
+  if (sim_param.res_num % 2 == 0) {
+    mut_param.seq_strand = '+';
+
+    for (i = 0; i < len; i++) {
+      nt = toupper(ref_param.seq[offset + i]);
+      mut_param.seq[i] = nt;
+    }
+  } else {
+    mut_param.seq_strand = '-';
+
+    for (i = 0; i < len; i++) {
+      nt = toupper(ref_param.seq[offset + i]);
+
+      if (nt == 'A')
+        mut_param.seq[len - 1 - i] = 'T';
+      else if (nt == 'T')
+        mut_param.seq[len - 1 - i] = 'A';
+      else if (nt == 'G')
+        mut_param.seq[len - 1 - i] = 'C';
+      else if (nt == 'C')
+        mut_param.seq[len - 1 - i] = 'G';
+      else
+        mut_param.seq[len - 1 - i] = nt;
+    }
+  }
+  mut_param.seq[len] = '\0';
+
+  // Place substitutions and insertions
+  offset = 0;
+  seq_offset = 0;
+  maf_offset = 0;
+
+  for (i = 0; i < len; i++) {
+    nt = mut_param.seq[seq_offset++];
+
+    if (mut_param.tmp_qc[i] == ' ') {
+      mut_param.maf_seq[maf_offset] = '-';
+      mut_param.maf_ref_seq[maf_offset] = nt;
+      maf_offset++;
+      continue;
+    }
+
+    mut_param.new_qc[offset] = mut_param.tmp_qc[i];
+
+    rand_value = rand() % 1000000;
+    qc_value = (int)mut_param.tmp_qc[i] - 33;
+
+    if (rand_value < mut_param.sub_thre[qc_value]) {
+      sim_param.res_sub_num++;
+      index = rand() % 3;
+      if (nt == 'A')
+        mut_param.new_seq[offset] = mut_param.sub_nt_a[index];
+      else if (nt == 'T')
+        mut_param.new_seq[offset] = mut_param.sub_nt_t[index];
+      else if (nt == 'G')
+        mut_param.new_seq[offset] = mut_param.sub_nt_g[index];
+      else if (nt == 'C')
+        mut_param.new_seq[offset] = mut_param.sub_nt_c[index];
+      else {
+        index = rand() % 4;
+        mut_param.new_seq[offset] = mut_param.sub_nt_n[index];
+      }
+      mut_param.maf_ref_seq[maf_offset] = nt;
+    } else if (rand_value < mut_param.ins_thre[qc_value]) {
+      ++sim_param.res_ins_num;
+      index = rand() % 8;
+
+      if (index >= 4)
+        mut_param.new_seq[offset] = nt;
+      else
+        mut_param.new_seq[offset] = mut_param.ins_nt[index];
+
+      --seq_offset;
+
+      if (mut_param.seq_strand == '+')
+        --mut_param.seq_right;
+      else
+        ++mut_param.seq_left;
+
+      mut_param.maf_ref_seq[maf_offset] = '-';
+
+    } else {
+      mut_param.new_seq[offset] = nt;
+      mut_param.maf_ref_seq[maf_offset] = nt;
+    }
+    mut_param.maf_seq[maf_offset] = mut_param.new_seq[offset];
+    ++maf_offset;
+    ++offset;
+  }
+  mut_param.new_qc[offset] = '\0';
+  mut_param.new_seq[offset] = '\0';
+  mut_param.maf_seq[maf_offset] = '\0';
+  mut_param.maf_ref_seq[maf_offset] = '\0';
+
+  if (mut_param.seq_strand == '-') {
+    revcomp(mut_param.maf_seq);
+    revcomp(mut_param.maf_ref_seq);
+  }
+
+  return SUCCEEDED;
+}
 
 int mutate() {
   char *line;
